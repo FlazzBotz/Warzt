@@ -1,0 +1,494 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { Terminal, Code, FileText, CheckCircle, AlertTriangle, Play, Github, Loader2, Download, Key, Smartphone, Eye, Image as ImageIcon, Copy, Plus, Trash2, Settings, Box, ChevronRight } from 'lucide-react';
+
+export default function App() {
+  const [appName, setAppName] = useState('My Web App');
+  const [packageName, setPackageName] = useState('com.mywebapp.app');
+  const [version, setVersion] = useState('1.0.0');
+  
+  const defaultHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { --primary: #3b82f6; --bg: #f8fafc; --text: #0f172a; }
+    body { font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 20px; background: var(--bg); color: var(--text); margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .card { background: white; padding: 32px; border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.08); width: 100%; max-width: 320px; }
+    h1 { margin: 0 0 8px 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+    p { color: #64748b; margin-bottom: 28px; font-size: 15px; line-height: 1.5; }
+    .btn { background: var(--primary); color: white; padding: 16px 24px; border: none; border-radius: 16px; font-size: 16px; font-weight: 700; cursor: pointer; width: 100%; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 8px 16px rgba(59, 130, 246, 0.25); }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 12px 20px rgba(59, 130, 246, 0.3); }
+    .btn:active { transform: translateY(0); }
+    .app-icon { width: 96px; height: 96px; margin-bottom: 20px; border-radius: 24px; object-fit: cover; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+    
+    /* Tambahan teks panjang untuk test scroll */
+    .scroll-test { margin-top: 40px; padding: 20px; background: #e2e8f0; border-radius: 12px; font-size: 12px; color: #475569; text-align: left; }
+  </style>
+  <script>
+    function tes(){
+      alert("?? Aplikasi Native Android Anda berfungsi sempurna!");
+    }
+  </script>
+</head>
+<body>
+  <div class="card">
+    <img class="app-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZiYmYyNCIgc3Ryb2tlPSIjZjU5ZTBiIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBvbHlnb24gcG9pbnRzPSIxMiAyIDE1LjA5IDguMjYgMjIgOS4yNyAxNyAxNC4xNCAxOC4xOCAyMSAxMiAxNy43NyA1LjgyIDIxIDcgMTQuMTQgMiA5LjI3IDguOTEgOC4yNiAxMiAyIj48L3BvbHlnb24+PC9zdmc+" alt="Logo" />
+    <h1>AppStudio</h1>
+    <p>Aplikasi ini memuat gambar secara offline menggunakan metode Base64.</p>
+    <button class="btn" onclick="tes()">Uji Aplikasi</button>
+    
+    <div class="scroll-test">
+       <strong>Area Uji Scroll:</strong> Coba tambahkan banyak baris kode HTML di editor. Halaman ini sekarang bisa digulir ke bawah tanpa memotong elemen UI lainnya!
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const [htmlContent, setHtmlContent] = useState(defaultHtml);
+  const [githubToken, setGithubToken] = useState('');
+  const [isBuilding, setIsBuilding] = useState(false);
+  const [logs, setLogs] = useState([]);
+  const [downloadLink, setDownloadLink] = useState('');
+  const [repoLink, setRepoLink] = useState('');
+  const [activeTab, setActiveTab] = useState('preview');
+  const [localImages, setLocalImages] = useState([]);
+  
+  const logsEndRef = useRef(null);
+  const iframeRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (activeTab === 'terminal') logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logs, activeTab]);
+
+  useEffect(() => {
+    if (iframeRef.current && activeTab === 'preview') {
+      const document = iframeRef.current.contentDocument;
+      if (document) {
+        document.open();
+        document.write(htmlContent);
+        document.close();
+      }
+    }
+  }, [htmlContent, activeTab]);
+
+  const addLog = (msg, type = 'info') => {
+    const time = new Date().toLocaleTimeString('id-ID', { hour12: false });
+    setLogs(prev => [...prev, { time, msg, type }]);
+  };
+
+  const utf8ToBase64 = (str) => btoa(unescape(encodeURIComponent(str)));
+
+  const handleImageUpload = (e) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      Array.from(files).forEach(file => {
+        if (file.size > 2 * 1024 * 1024) {
+          alert(`Ukuran ${file.name} terlalu besar (Maks 2MB).`);
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setLocalImages(prev => [...prev, { id: Date.now() + Math.random(), name: file.name, dataUrl: event.target.result }]);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  const getWorkflowYaml = () => `
+name: Build Cordova APK
+on: [workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: actions/setup-java@v4
+        with: { distribution: 'temurin', java-version: '17' }
+      - run: npm install -g cordova
+      - run: |
+          cordova create app "${packageName}" "${appName}"
+          rm -rf app/www/*
+          cp index.html app/www/index.html
+          cp config.xml app/config.xml
+      - run: |
+          cd app
+          cordova platform add android
+          cordova build android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${appName.replace(/[^a-zA-Z0-9]/g, '_')}-APK
+          path: app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
+`;
+
+  const getConfigXml = () => `<?xml version='1.0' encoding='utf-8'?>
+<widget id="${packageName}" version="${version}" xmlns="http://www.w3.org/ns/widgets">
+    <name>${appName}</name>
+    <description>Built via AppStudio Cloud Builder</description>
+    <author>AI Builder</author>
+    <content src="index.html" />
+    <access origin="*" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <preference name="Orientation" value="portrait" />
+</widget>`;
+
+  const fetchGH = async (path, method = 'GET', body = null) => {
+    const res = await fetch(`https://api.github.com${path}`, {
+      method,
+      headers: { 'Authorization': `Bearer ${githubToken}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : null
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || res.statusText);
+    }
+    return res.status !== 204 ? res.json() : null;
+  };
+
+  const startCloudBuild = async () => {
+    if (!githubToken.trim()) return alert("Masukkan GitHub Token terlebih dahulu!");
+    if (!htmlContent.includes('<html')) return alert("Kode HTML tidak valid!");
+
+    setIsBuilding(true);
+    setActiveTab('terminal');
+    setLogs([]);
+    setDownloadLink('');
+    setRepoLink('');
+
+    // Menggeser layar ke atas agar user bisa melihat tab Terminal
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    try {
+      addLog("Memulai koneksi ke GitHub Cloud...", "info");
+      const user = await fetchGH('/user');
+      const owner = user.login;
+      addLog(`Autentikasi berhasil: @${owner}`, "success");
+
+      const repoName = `apk-builder-${Date.now()}`;
+      addLog(`Menyiapkan workspace: ${repoName}...`, "info");
+      const repo = await fetchGH('/user/repos', 'POST', { name: repoName, private: true, auto_init: true });
+      const defaultBranch = repo.default_branch;
+      setRepoLink(repo.html_url);
+      
+      await new Promise(r => setTimeout(r, 2000));
+
+      addLog("Menyusun file source code...", "info");
+      await fetchGH(`/repos/${owner}/${repoName}/contents/index.html`, 'PUT', { message: "Add UI", content: utf8ToBase64(htmlContent), branch: defaultBranch });
+      await fetchGH(`/repos/${owner}/${repoName}/contents/config.xml`, 'PUT', { message: "Add Config", content: utf8ToBase64(getConfigXml()), branch: defaultBranch });
+      await fetchGH(`/repos/${owner}/${repoName}/contents/.github/workflows/build.yml`, 'PUT', { message: "Add Pipeline", content: utf8ToBase64(getWorkflowYaml()), branch: defaultBranch });
+
+      await new Promise(r => setTimeout(r, 3000));
+
+      addLog("Menjalankan cloud compiler (Ubuntu VM)...", "info");
+      await fetchGH(`/repos/${owner}/${repoName}/actions/workflows/build.yml/dispatches`, 'POST', { ref: defaultBranch });
+
+      let runId = null;
+      for (let i = 0; i < 15; i++) {
+        await new Promise(r => setTimeout(r, 4000));
+        const runs = await fetchGH(`/repos/${owner}/${repoName}/actions/runs`);
+        if (runs.workflow_runs?.length > 0) { runId = runs.workflow_runs[0].id; break; }
+      }
+
+      if (!runId) throw new Error("Gagal memulai proses build.");
+      
+      addLog(`Kompilasi sedang berjalan [Job ID: ${runId}]`, "success");
+      addLog("Estimasi waktu: 2-3 menit. Mohon tunggu...", "warning");
+
+      while (true) {
+        await new Promise(r => setTimeout(r, 8000));
+        const runInfo = await fetchGH(`/repos/${owner}/${repoName}/actions/runs/${runId}`);
+        
+        if (runInfo.status === 'completed') {
+          if (runInfo.conclusion === 'success') {
+            addLog("? KOMPILASI SELESAI!", "success");
+            const artifacts = await fetchGH(`/repos/${owner}/${repoName}/actions/runs/${runId}/artifacts`);
+            if (artifacts.artifacts?.length > 0) {
+              setDownloadLink(`https://github.com/${owner}/${repoName}/actions/runs/${runId}/artifacts/${artifacts.artifacts[0].id}`);
+              addLog("?? File APK siap diunduh.", "success");
+            } else {
+              addLog("Gagal mengambil file APK.", "error");
+            }
+            break;
+          } else {
+            throw new Error(`Kompilasi Gagal. Status: ${runInfo.conclusion}`);
+          }
+        } else {
+          addLog(`Mengeksekusi task: ${runInfo.status}...`, "info");
+        }
+      }
+    } catch (error) {
+      addLog(`ERROR: ${error.message}`, "error");
+    } finally {
+      setIsBuilding(false);
+    }
+  };
+
+  return (
+    // Dihilangkan h-screen dan overflow-hidden, diganti menjadi min-h-screen agar bisa discroll
+    <div className="min-h-screen w-full bg-slate-100 flex flex-col font-sans text-slate-800">
+      
+      {/* CSS untuk Scrollbar Kustom */}
+      <style>{`
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .editor-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+        .editor-scroll::-webkit-scrollbar-track { background: #1e1e1e; }
+        .editor-scroll::-webkit-scrollbar-thumb { background: #4b5563; border: 2px solid #1e1e1e; border-radius: 10px; }
+      `}</style>
+
+      {/* NAVBAR STICKY - Tetap di atas saat discroll */}
+      <nav className="h-16 shrink-0 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 md:px-6 shadow-md sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-500 p-2 rounded-lg">
+            <Box size={20} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-white font-bold text-lg leading-tight tracking-wide">AppStudio <span className="text-blue-400">Cloud</span></h1>
+            <p className="text-slate-400 text-[11px] font-medium tracking-wider uppercase hidden sm:block">HTML to Native APK IDE</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2 text-xs text-slate-400 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Cloud Compiler: Ready
+          </div>
+        </div>
+      </nav>
+
+      {/* MAIN WORKSPACE - Layout berubah menjadi kolom berurutan di layar kecil, sejajar di layar besar (xl) */}
+      <main className="flex-1 flex flex-col xl:flex-row p-4 md:p-6 gap-6 max-w-[1600px] mx-auto w-full">
+        
+        {/* PANEL KIRI: KONFIGURASI */}
+        {/* Fitur Sticky: Di layar PC, panel ini menempel saat halaman di-scroll ke bawah */}
+        <aside className="w-full xl:w-80 shrink-0 flex flex-col gap-4 xl:sticky xl:top-[88px] xl:h-[calc(100vh-120px)] overflow-y-auto custom-scroll pb-2">
+          
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col shrink-0">
+            <div className="bg-slate-50 border-b border-slate-100 px-4 py-3 flex items-center gap-2">
+              <Settings size={16} className="text-slate-500" />
+              <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Konfigurasi Proyek</h2>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">NAMA APLIKASI</label>
+                <input type="text" value={appName} onChange={(e) => setAppName(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" disabled={isBuilding} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">PACKAGE ID</label>
+                <input type="text" value={packageName} onChange={(e) => setPackageName(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono transition-all" disabled={isBuilding} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">VERSI</label>
+                <input type="text" value={version} onChange={(e) => setVersion(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" disabled={isBuilding} />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col shrink-0">
+            <div className="bg-slate-50 border-b border-slate-100 px-4 py-3 flex items-center gap-2">
+              <Github size={16} className="text-slate-500" />
+              <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Cloud Engine Auth</h2>
+            </div>
+            <div className="p-4">
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5">PERSONAL ACCESS TOKEN</label>
+              <input 
+                type="password" 
+                placeholder="ghp_..."
+                value={githubToken} 
+                onChange={(e) => setGithubToken(e.target.value)} 
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono transition-all mb-2" 
+                disabled={isBuilding} 
+              />
+              <p className="text-[10px] text-slate-400 leading-tight">Token membutuhkan akses <b className="text-slate-500">repo</b> dan <b className="text-slate-500">workflow</b> untuk men-trigger server.</p>
+            </div>
+          </div>
+
+          <div className="mt-auto pt-2 shrink-0">
+            <button 
+              onClick={startCloudBuild}
+              disabled={isBuilding || !githubToken}
+              className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 disabled:from-slate-400 disabled:to-slate-500 disabled:cursor-not-allowed text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-0.5"
+            >
+              {isBuilding ? <Loader2 size={20} className="animate-spin" /> : <Play size={20} fill="currentColor" />}
+              {isBuilding ? 'Sedang Membangun...' : 'Build APK Sekarang'}
+            </button>
+          </div>
+
+        </aside>
+
+        {/* PANEL TENGAH: WORKSPACE EDITOR */}
+        {/* Editor sekarang bisa memanjang ke bawah sesuai jumlah baris kode (min-height ditetapkan) */}
+        <section className="flex-1 flex flex-col min-w-0 gap-6">
+          
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 shrink-0 flex flex-col">
+            <div className="border-b border-slate-100 px-4 py-3 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+              <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                <ImageIcon size={16} className="text-blue-500" />
+                Asset Manager (Offline Images)
+              </h2>
+              <button onClick={() => fileInputRef.current?.click()} className="bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-bold py-1.5 px-3 rounded-md flex items-center gap-1.5 transition-colors">
+                <Plus size={14} /> Tambah
+              </button>
+              <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" multiple className="hidden" />
+            </div>
+
+            <div className="p-3 flex gap-3 overflow-x-auto custom-scroll items-center bg-white rounded-b-2xl min-h-[140px]">
+              {localImages.length === 0 ? (
+                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-100 rounded-xl p-6">
+                  <ImageIcon size={24} className="mb-2 opacity-50" />
+                  <p className="text-xs text-center">Upload gambar lokal untuk di-embed ke dalam HTML (Base64)</p>
+                </div>
+              ) : (
+                localImages.map((img) => (
+                  <div key={img.id} className="relative group bg-slate-50 border border-slate-200 p-2 rounded-xl min-w-[120px] w-[120px] h-full flex flex-col shrink-0 hover:border-blue-300 transition-colors">
+                    <button onClick={() => setLocalImages(prev => prev.filter(i => i.id !== img.id))} className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-red-600 shadow-sm" title="Hapus">
+                      <Trash2 size={12} />
+                    </button>
+                    <div className="flex-1 bg-white rounded-lg border border-slate-100 mb-2 flex items-center justify-center overflow-hidden p-1 min-h-[70px]">
+                      <img src={img.dataUrl} alt={img.name} className="max-h-16 object-contain" />
+                    </div>
+                    <button 
+                      onClick={() => { copyToClipboard(`<img src="${img.dataUrl}" alt="${img.name}" />`); alert('Tag HTML disalin!'); }}
+                      className="w-full bg-blue-50 hover:bg-blue-100 text-blue-600 text-[10px] font-bold py-1.5 rounded-md flex items-center justify-center gap-1 transition-colors border border-blue-200"
+                    >
+                      <Copy size={12} /> Copy Tag
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="bg-[#1e1e1e] rounded-2xl shadow-xl border border-slate-700 flex flex-col overflow-hidden min-h-[500px]">
+            <div className="bg-[#2d2d2d] px-4 py-2 flex items-center justify-between shrink-0 border-b border-black/30">
+              <div className="flex items-center gap-2">
+                <Code size={16} className="text-blue-400" />
+                <span className="text-[#cccccc] text-xs font-mono tracking-wide">index.html</span>
+              </div>
+              <div className="text-[#858585] text-[10px] uppercase tracking-wider flex items-center gap-1">
+                HTML + CSS + JS <ChevronRight size={12}/>
+              </div>
+            </div>
+            
+            {/* Editor Textarea menyesuaikan tinggi konten jika diperlukan */}
+            <textarea 
+              value={htmlContent} 
+              onChange={(e) => setHtmlContent(e.target.value)}
+              className="w-full h-full min-h-[500px] bg-transparent text-[#d4d4d4] p-4 font-mono text-[13px] leading-relaxed resize-y outline-none editor-scroll selection:bg-blue-900/50"
+              spellCheck="false"
+              disabled={isBuilding}
+              placeholder="<!-- Tulis atau paste kode HTML Anda di sini... -->"
+            ></textarea>
+          </div>
+        </section>
+
+        {/* PANEL KANAN: OUTPUT & PREVIEW */}
+        {/* Sama seperti panel kiri, dijadikan Sticky di layar lebar agar selalu terlihat */}
+        <aside className="w-full xl:w-[400px] shrink-0 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden min-h-[700px] xl:sticky xl:top-[88px] xl:h-[calc(100vh-120px)]">
+          
+          <div className="flex bg-slate-50 border-b border-slate-200 shrink-0 p-1.5 gap-1">
+            <button 
+              onClick={() => setActiveTab('preview')}
+              className={`flex-1 py-2.5 px-3 text-[11px] font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 transition-all ${activeTab === 'preview' ? 'bg-white text-blue-600 shadow-sm border border-slate-200/60' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+            >
+              <Eye size={16} /> Live Preview
+            </button>
+            <button 
+              onClick={() => setActiveTab('terminal')}
+              className={`flex-1 py-2.5 px-3 text-[11px] font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 transition-all ${activeTab === 'terminal' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+            >
+              <Terminal size={16} /> Build Output
+              {isBuilding && <span className="relative flex h-2 w-2 ml-1"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span></span>}
+            </button>
+          </div>
+
+          {/* TAB PREVIEW */}
+          <div className={`flex-1 flex-col items-center justify-center bg-slate-100 relative py-8 ${activeTab === 'preview' ? 'flex' : 'hidden'}`}>
+            <div className="absolute top-3 w-full text-center text-[10px] text-slate-400 font-medium uppercase tracking-widest">
+              Live Mockup Rendering
+            </div>
+            
+            <div className="relative w-[300px] h-[600px] bg-slate-900 rounded-[40px] p-3 shadow-2xl border-[6px] border-slate-800 flex flex-col shrink-0">
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-6 bg-slate-900 rounded-b-2xl z-10 flex justify-center items-end pb-1.5">
+                <div className="w-12 h-1 bg-slate-800 rounded-full"></div>
+              </div>
+              
+              <div className="flex-1 bg-white rounded-[28px] overflow-hidden relative border border-slate-800/50">
+                <iframe 
+                  ref={iframeRef}
+                  title="App Preview"
+                  className="w-full h-full border-none"
+                  sandbox="allow-scripts allow-same-origin"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* TAB TERMINAL */}
+          <div className={`flex-1 bg-slate-950 flex-col overflow-hidden relative ${activeTab === 'terminal' ? 'flex' : 'hidden'}`}>
+            
+            <div className="p-4 overflow-y-auto flex-1 font-mono text-[11px] space-y-2.5 custom-scroll">
+              {logs.length === 0 ? (
+                <div className="text-slate-600 h-full flex items-center justify-center flex-col gap-3">
+                  <Terminal size={40} className="opacity-30" />
+                  <p className="text-center px-6 leading-relaxed">System Standby.<br/>Tekan tombol "Build APK Sekarang" untuk memulai proses kompilasi cloud.</p>
+                </div>
+              ) : (
+                logs.map((log, idx) => (
+                  <div key={idx} className="flex gap-3">
+                    <span className="text-slate-500 shrink-0">[{log.time}]</span>
+                    <span className={`${
+                      log.type === 'error' ? 'text-red-400 font-bold' : 
+                      log.type === 'success' ? 'text-green-400 font-bold' : 
+                      log.type === 'warning' ? 'text-yellow-400' : 'text-slate-300'
+                    }`}>
+                      {log.msg}
+                    </span>
+                  </div>
+                ))
+              )}
+              <div ref={logsEndRef} />
+            </div>
+
+            {/* Tombol Unduh Muncul di Bawah Terminal */}
+            {(downloadLink || repoLink) && (
+              <div className="bg-slate-900 border-t border-slate-800 p-4 shrink-0 animate-fade-in shadow-[0_-10px_30px_rgba(0,0,0,0.5)] z-10">
+                <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-xl p-4">
+                  <h3 className="text-emerald-400 font-bold text-sm flex items-center gap-2 mb-3">
+                    <CheckCircle size={16} /> APK Berhasil Dibuat!
+                  </h3>
+                  <div className="flex flex-col gap-2">
+                    {downloadLink && (
+                      <a href={downloadLink} target="_blank" rel="noreferrer" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs">
+                        <Download size={16} /> Download APK (ZIP)
+                      </a>
+                    )}
+                    {repoLink && (
+                      <a href={repoLink} target="_blank" rel="noreferrer" className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold border border-slate-700 py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs">
+                        <Github size={16} /> Lihat Source Code
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+        </aside>
+
+      </main>
+    </div>
+  );
+}
